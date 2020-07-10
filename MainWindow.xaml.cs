@@ -44,10 +44,32 @@ namespace WpfCoreCalculator
 				settings.Rows.Add(new Settings.Row { Variable = variables[i].Text.Trim(), Expression = expressions[i].Text.Trim(), Comment = comments[i].Text.Trim() });
 			}
 
-			File.WriteAllText(settingsFile, JsonSerializer.Serialize(settings, new JsonSerializerOptions
+			var newFile = JsonSerializer.Serialize(settings, new JsonSerializerOptions
 			{
 				WriteIndented = true,
-			}));
+				Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Create(System.Text.Unicode.UnicodeRanges.All)
+			});
+
+			bool createNewFile;
+			if (File.Exists(settingsFile))
+			{
+				var oldFile = File.ReadAllText(settingsFile);
+				createNewFile = oldFile != newFile;
+
+				if (createNewFile)
+				{
+					File.Move(settingsFile, settingsFile + ".bak", true);
+				}
+			}
+			else
+			{
+				createNewFile = true;
+			}
+
+			if (createNewFile)
+			{
+				File.WriteAllText(settingsFile, newFile);
+			}
 		}
 
 		private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -57,7 +79,10 @@ namespace WpfCoreCalculator
 			{
 				try
 				{
-					settings = JsonSerializer.Deserialize<Settings>(File.ReadAllText(settingsFile));
+					settings = JsonSerializer.Deserialize<Settings>(File.ReadAllText(settingsFile), new JsonSerializerOptions
+					{
+						Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Create(System.Text.Unicode.UnicodeRanges.All)
+					});
 					settings.Height = Math.Max(110, settings.Height);
 					settings.Width = Math.Max(400, settings.Width);
 
@@ -95,7 +120,7 @@ namespace WpfCoreCalculator
 			Height = settings.Height;
 			Width = settings.Width;
 
-			foreach (var item in settings.Rows.Where(x=> !string.IsNullOrWhiteSpace(x.Expression)))
+			foreach (var item in settings.Rows)
 			{
 				AddGridRow(expressions.Count, item.Variable, item.Expression, item.Comment);
 			}
