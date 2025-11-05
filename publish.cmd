@@ -1,0 +1,2 @@
+REM https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview?tabs=cli
+dotnet publish --verbosity normal --output c:\GitHUB\VariableCalculator\publish\ --runtime win-x64 --self-contained false -p:PublishSingleFile=true
