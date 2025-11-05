@@ -1,0 +1,45 @@
+﻿# Editor configuration, see https://editorconfig.org
+root = true
+
+[*]
+indent_style = tab
+indent_size = 4
+tab_width = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+dotnet_separate_import_directive_groups = false
+dotnet_sort_system_directives_first = true
+
+csharp_prefer_braces = true
+csharp_style_allow_blank_lines_between_consecutive_braces_experimental = false:error
+csharp_style_allow_embedded_statements_on_same_line_experimental = false:error
+
+dotnet_diagnostic.CA1806.severity = error # Handle creates a new instance is never used
+dotnet_diagnostic.CA1822.severity = error # Member does not access instance data and can be marked as static
+dotnet_diagnostic.CA1825.severity = error # Avoid unnecessary zero-length array allocations
+dotnet_diagnostic.CA2016.severity = error # Forward the 'CancellationToken' parameter to methods that take one
+dotnet_diagnostic.CS0168.severity = error # The variable is declared but never
+dotnet_diagnostic.CS1591.severity = silent # Missing XML comment for publicly visible type or member 'Type_or_Member'
+dotnet_diagnostic.CS8509.severity = error # The switch expression does not handle all possible values of its input type
+dotnet_diagnostic.CS8524.severity = silent # Default case...
+dotnet_diagnostic.CS8600.severity = error # Converting null literal or possible null value to non-nullable type
+dotnet_diagnostic.CS8601.severity = error # Possible null reference assignment
+dotnet_diagnostic.CS8602.severity = error # Dereference of a possibly null reference
+dotnet_diagnostic.CS8603.severity = error # Possible null reference return
+dotnet_diagnostic.CS8604.severity = error # Possible null reference argument
+dotnet_diagnostic.CS8632.severity = error # The annotation for nullable reference types should only be used in code within a '#nullable' annotations context
+dotnet_diagnostic.IDE0005.severity = error # Using directive is unnecessary
+dotnet_diagnostic.IDE0028.severity = error # Collection initialization can be simplified
+dotnet_diagnostic.IDE0042.severity = silent # Variable declaration can be deconstructed
+dotnet_diagnostic.IDE0052.severity = error # Private member can be removed as the value assigned to it is never read
+dotnet_diagnostic.IDE0057.severity = silent # Substring can be simplified
+dotnet_diagnostic.IDE0060.severity = error # Remove unused parameter
+dotnet_diagnostic.IDE0063.severity = silent # 'using' statement can be simplified
+dotnet_diagnostic.IDE0075.severity = error # Conditional expression can be simplified
+dotnet_diagnostic.IDE0090.severity = error # 'new' expression can be simplified
+dotnet_diagnostic.IDE0161.severity = error # Convert to file-scoped namespace
+dotnet_diagnostic.IDE0290.severity = silent # Use primary constructor
+dotnet_diagnostic.IDE1006.severity = error # Naming rule violation
+dotnet_diagnostic.IDE2003.severity = error # Blank line required between block and subsequent statement

@@ -1,4 +1,4 @@
-name: .NET Core
+name: .NET Core Desktop
 
 on:
   push:
@@ -13,12 +13,16 @@ jobs:
                              # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idruns-on
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v1
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install .NET Core
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 3.1.101
+        dotnet-version: 8.0.x
+
     - name: Install dependencies
       run: dotnet restore
+
     - name: Build
       run: dotnet build --configuration Release --no-restore
