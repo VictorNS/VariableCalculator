@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -21,6 +22,8 @@ namespace WpfCoreCalculator
 		readonly List<TextBox> _expressions = [];
 		readonly List<TextBox> _results = [];
 		readonly List<TextBox> _comments = [];
+		readonly List<Button> _addButtons = [];
+		readonly List<Button> _delButtons = [];
 
 		public MainWindow()
 		{
@@ -42,7 +45,10 @@ namespace WpfCoreCalculator
 
 			for (var i = 0; i < _expressions.Count; i++)
 			{
-				var item = new Settings.Row { Variable = _variables[i].Text.Trim(), Expression = _expressions[i].Text.Trim(), Comment = _comments[i].Text.Trim() };
+				string expression = _expressions[i].Text
+					.Trim()
+					.Replace(',', '.');
+				var item = new Settings.Row { Variable = _variables[i].Text.Trim(), Expression = expression, Comment = _comments[i].Text.Trim() };
 
 				if (!string.IsNullOrWhiteSpace(item.Variable) || !string.IsNullOrWhiteSpace(item.Expression) || !string.IsNullOrWhiteSpace(item.Comment))
 					lastNonEmptyRow = i;
@@ -127,53 +133,37 @@ namespace WpfCoreCalculator
 				AddGridRow(_expressions.Count, item.Variable, item.Expression, item.Comment);
 			}
 
-			TextBox_TextChanged(null, null);
+			UpdateDeleteButtonVisibility();
+			RefreshCalculations();
 		}
 
 		private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
 		{
-			var errors = "";
-			var interpreter = new Interpreter();
+			RefreshCalculations();
+		}
 
-			for (var i = 0; i < _expressions.Count; i++)
-			{
-				var expression = _expressions[i].Text.Trim();
-
-				double? result = null;
-				if (!string.IsNullOrWhiteSpace(expression))
-				{
-					try
-					{
-						result = interpreter.Eval<double>(expression);
-					}
-					catch (Exception ex)
-					{
-						errors += ex.Message;
-						result = null;
-					}
-				}
-
-				if (result.HasValue)
-				{
-					var res = Math.Round(result.Value, 4);
-					_results[i].Text = res.ToString();
-
-					if (!string.IsNullOrWhiteSpace(_variables[i].Text))
-					{
-						interpreter.SetVariable(_variables[i].Text.Trim(), res);
-					}
-				}
-				else
-				{
-					_results[i].Text = "";
-				}
-			}
-
-			errorsLabel.Content = errors.Length == 0 ? "OK" : errors;
-
-			if (_expressions.Count == 0 || !string.IsNullOrWhiteSpace(_expressions[^1].Text))
+		private void AddButton_Click(object sender, RoutedEventArgs e)
+		{
+			if (sender is Button button && button.Tag is int rowIndex)
 			{
 				AddGridRow(_expressions.Count, "", "", "");
+				UpdateDeleteButtonVisibility();
+				ShiftValuesDown(rowIndex + 1);
+				RefreshCalculations();
+			}
+		}
+
+		private void DeleteButton_Click(object sender, RoutedEventArgs e)
+		{
+			if (sender is Button button && button.Tag is int rowIndex)
+			{
+				// Don't delete if it's the only row or the last empty row
+				if (_expressions.Count <= 1 || (rowIndex == _expressions.Count - 1 && string.IsNullOrWhiteSpace(_expressions[rowIndex].Text)))
+					return;
+
+				RemoveGridRow(rowIndex);
+				UpdateDeleteButtonVisibility();
+				RefreshCalculations();
 			}
 		}
 
@@ -220,6 +210,141 @@ namespace WpfCoreCalculator
 			Grid.SetColumn(com, 4);
 			expressionsGrid.Children.Add(com);
 			_comments.Add(com);
+
+			var addButton = new Button
+			{
+				Tag = rowIndex,
+				ToolTip = "Insert row below",
+				Content = new Image
+				{
+					Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/images/add.png")),
+					Stretch = System.Windows.Media.Stretch.Uniform
+				}
+			};
+			addButton.Click += AddButton_Click;
+			Grid.SetRow(addButton, rowIndex);
+			Grid.SetColumn(addButton, 5);
+			expressionsGrid.Children.Add(addButton);
+			_addButtons.Add(addButton);
+
+			var deleteButton = new Button
+			{
+				Tag = rowIndex,
+				ToolTip = "Delete row",
+				Visibility = Visibility.Hidden,
+				Content = new Image
+				{
+					Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/images/delete.png")),
+					Stretch = System.Windows.Media.Stretch.Uniform
+				}
+			};
+			deleteButton.Click += DeleteButton_Click;
+			Grid.SetRow(deleteButton, rowIndex);
+			Grid.SetColumn(deleteButton, 6);
+			expressionsGrid.Children.Add(deleteButton);
+			_delButtons.Add(deleteButton);
+		}
+
+		private void RemoveGridRow(int rowIndex)
+		{
+			var toRemove = expressionsGrid.Children.Cast<UIElement>().Where(el => Grid.GetRow(el) == rowIndex).ToList();
+			foreach (var control in toRemove)
+				expressionsGrid.Children.Remove(control);
+
+			_variables.RemoveAt(rowIndex);
+			_expressions.RemoveAt(rowIndex);
+			_results.RemoveAt(rowIndex);
+			_comments.RemoveAt(rowIndex);
+			_addButtons.RemoveAt(rowIndex);
+			_delButtons.RemoveAt(rowIndex);
+			expressionsGrid.RowDefinitions.RemoveAt(rowIndex);
+
+			var toUpdate = expressionsGrid.Children.Cast<UIElement>().Where(el => Grid.GetRow(el) > rowIndex).ToList();
+			foreach (var control in toUpdate)
+				Grid.SetRow(control, Grid.GetRow(control) - 1);
+
+			for (int i = 0; i < _addButtons.Count; i++)
+			{
+				_addButtons[i].Tag = i;
+				_delButtons[i].Tag = i;
+			}
+		}
+
+		private void UpdateDeleteButtonVisibility()
+		{
+			int lastIndex = _addButtons.Count - 1;
+
+			for (int i = 0; i < _addButtons.Count; i++)
+			{
+				var visibility = i == lastIndex ? Visibility.Hidden : Visibility.Visible;
+				_addButtons[i].Visibility = visibility;
+				_delButtons[i].Visibility = visibility;
+			}
+		}
+
+		private void ShiftValuesDown(int startRowIndex)
+		{
+			for (int i = _expressions.Count - 1; i > startRowIndex; i--)
+			{
+				_variables[i].Text = _variables[i - 1].Text;
+				_expressions[i].Text = _expressions[i - 1].Text;
+				_comments[i].Text = _comments[i - 1].Text;
+			}
+
+			_variables[startRowIndex].Text = "";
+			_expressions[startRowIndex].Text = "";
+			_comments[startRowIndex].Text = "";
+		}
+
+		private void RefreshCalculations()
+		{
+			var errors = "";
+			var interpreter = new Interpreter();
+
+			for (var i = 0; i < _expressions.Count; i++)
+			{
+				var expression = _expressions[i].Text
+					.Trim()
+					.Replace(',', '.')
+					.Replace("_", "");
+
+				double? result = null;
+				if (!string.IsNullOrWhiteSpace(expression))
+				{
+					try
+					{
+						result = interpreter.Eval<double>(expression);
+					}
+					catch (Exception ex)
+					{
+						errors += ex.Message;
+						result = null;
+					}
+				}
+
+				if (result.HasValue)
+				{
+					var res = Math.Round(result.Value, 4);
+					_results[i].Text = res.ToString();
+
+					if (!string.IsNullOrWhiteSpace(_variables[i].Text))
+					{
+						interpreter.SetVariable(_variables[i].Text.Trim(), res);
+					}
+				}
+				else
+				{
+					_results[i].Text = "";
+				}
+			}
+
+			errorsLabel.Content = errors.Length == 0 ? "OK" : errors;
+
+			if (_expressions.Count == 0 || !string.IsNullOrWhiteSpace(_expressions[^1].Text))
+			{
+				AddGridRow(_expressions.Count, "", "", "");
+				UpdateDeleteButtonVisibility();
+			}
 		}
 	}
 }
